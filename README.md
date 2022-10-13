@@ -15,10 +15,13 @@ thoroughly tested. If you see value in this project, PRs welcome.
 3. Double check that chat messages are showing up in the scribe page.
 4. When you meeting is over, you can print the page as PDF or just copy-paste the content.
 
+### Known issues
+* Meeting does not load when using Brave browser.
 
 ### Possible improvements:
 * Nicer UI
 * Nicer formatting of chat messages
+* Handle chat emojis
 * Handle other events too e.g. participant join/leave/kick messages
 * Export chat as CSV/JSON/*
 * Use lib-jitsi-meet instead of IFrame API?
