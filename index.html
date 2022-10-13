@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Jitsi Chat Scribe</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+
+  <link rel="stylesheet" href="scribe.css">
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+          integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="scribe.js"></script>
+
+</head>
+<body>
+
+<div class="px-4 py-3 my-3 text-center" id="begin">
+  <h1 class="display-5 fw-bold">Jitsi Chat Scribe</h1>
+
+  <div class="text-muted"><small>Joins your meeting and transcribes the chat so you can download it all later.</small>
+  </div>
+
+  <div class="col-lg-6 mx-auto mt-5">
+    <form id="joinForm">
+      <div class="mb-3 row">
+        <label for="jitsiDomain" class="col-sm-2 col-form-label text-left">Server</label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control" id="jitsiDomain" value="meet.jit.si">
+        </div>
+      </div>
+      <div class="mb-3 row">
+        <label for="roomName" class="col-sm-2 col-form-label text-left">Room Name</label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control" id="roomName">
+        </div>
+      </div>
+      <div class="mb-3 row">
+        <label for="jwtToken" class="col-sm-2 col-form-label text-left">JWT Token</label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control" id="jwtToken" placeholder="Leave empty if JWT auth not required">
+        </div>
+      </div>
+
+      <button type="button" disabled class="btn btn-lg btn-outline-dark btn-block mt-5" id="doJoin">Let's Go</button>
+    </form>
+  </div>
+</div>
+
+
+<div id="scribe-container" class="container-fluid main_container d-none">
+  <div class="row flex-fill">
+
+    <div class="col-sm-8 flex-fill">
+      <div id="chat-content">
+
+        <div class="text-center mt-3 loading">
+          <div class="spinner-grow text-secondary loading" role="status">
+            <span class="sr-only"></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="col-sm-4 h-100" id="panel">
+      <div class="row">
+
+        <div class="col-sm-12 mt-3" id="meeting">
+          <div class="loading">Connecting ...</div>
+        </div>
+
+        <div class="col-sm-12 mt-3 d-none" id="end-content">
+          You have now left the meeting.
+
+          <button type="button" class="btn btn-lg btn-outline-dark btn-block mt-2" id="startOver">Start Over</button>
+
+        </div>
+        <div class="col-sm-12 mt-3" id="meeting-details">
+          <div class="mx-2">
+            <strong>Server: </strong> <span id="serverLabel"></span><br/>
+            <strong>Room: </strong> <a id="roomLink" href="#" target="_blank"></a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  $(document).ready(function () {
+    const $inputJitsiDomain = $('#jitsiDomain');
+    const $inputRoomName = $('#roomName');
+    const $inputToken = $('#jwtToken');
+    const $buttonDoJoin = $('#doJoin');
+
+    $('#startOver').on('click', function () {
+      window.location.reload();
+    });
+
+    $inputRoomName.focus();
+
+    function inputChanged() {
+      // do not allow spaces
+      const $this = $(this);
+      $this.val($this.val().replace(' ', ''));
+
+      // Only enable submit button when both domain and room fields are specified
+      if ($inputJitsiDomain.val() && $inputRoomName.val()) {
+        $buttonDoJoin.removeAttr('disabled');
+      } else {
+        $buttonDoJoin.attr('disabled', true);
+      }
+    }
+
+    $inputJitsiDomain.on('keyup', inputChanged);
+    $inputRoomName.on('keyup', inputChanged);
+
+    $buttonDoJoin.on('click', function (e) {
+      e.preventDefault();
+      const domain = $inputJitsiDomain.val().trim();
+      const room = $inputRoomName.val().trim();
+      const token = $inputToken.val().trim();
+
+      doJoin(domain, room, token);
+    })
+
+
+  });
+
+
+  function doJoin(domain, room, token) {
+    $('#begin').remove();
+    $('#scribe-container').addClass('d-flex').removeClass('d-none');
+
+    const scriptUrl = 'https://' + domain + '/external_api.js';
+    const roomUrl = 'https://' + domain + '/' + room;
+
+    $('#serverLabel').text(domain);
+    $('#roomLink').text(room).attr('href', roomUrl);
+
+    loadExternalScript(scriptUrl, function () {
+      jitsiJoin({
+          domain: domain,
+          room: room,
+          token: token,
+          parentNode: document.querySelector('#meeting'),
+          onEventCallback: handleEvents,
+        }
+      );
+
+      // change page title so room title shows in header when printed
+      document.title = room + ' (' + domain + ') - Jitsi Chat Scribe'
+    });
+  }
+
+  function onStart() {
+    $('.loading').remove();
+  }
+
+  function onEnd() {
+    $('#meeting').remove();
+    $('#end-content').removeClass('d-none');
+  }
+
+  function onChatMessage(data) {
+    $("<div>", { class: "message" })
+      .append($("<span>", { class: "timestamp text-muted", text: '[' + new Date().toLocaleString() + '] ' }))
+      .append($("<span>", { class: "sender", text: data.fromName + ' : ' }))
+      .append($("<span>", { class: "content", text: data.message }))
+      .appendTo($('#chat-content'))
+      .get(0).scrollIntoView();
+
+  }
+
+  function handleEvents(e) {
+    switch (e.event) {
+      case 'start':
+        onStart();
+        break;
+      case 'end':
+        onEnd();
+        break;
+      case 'chat':
+        onChatMessage(e.data);
+        break;
+    }
+  }
+
+
+</script>
+
+</body>
+</html>

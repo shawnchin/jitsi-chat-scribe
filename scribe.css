@@ -1,0 +1,47 @@
+
+#chat-content {
+  overflow: auto;
+  padding: 10px;
+  height: 100%;
+  max-height: 100vh;
+}
+
+#scribe-container {
+  height: 100vh;
+}
+#scribe-container > .row {
+  min-height: 100vh;
+}
+
+.flex-fill {
+  flex:1 1 auto;
+}
+
+#panel {
+  background: #eee;
+}
+
+.message {
+  margin-bottom: 10px;
+}
+.message .sender {
+  font-weight: bold;
+}
+
+.message .content {
+}
+
+/* print only chat content */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #chat-content, #chat-content * {
+    visibility: visible;
+  }
+  #chat-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}
